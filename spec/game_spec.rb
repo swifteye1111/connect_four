@@ -11,9 +11,6 @@ require_relative '../lib/game'
 describe Game do
   describe '#play_game' do
     subject(:game_play) { described_class.new }
-    # loop until game_over:
-        # expect to stop loop if game_over?
-        # expect to repeat loop if not game_over?
 
     context 'when game_over? is false once' do
       before do
@@ -21,7 +18,7 @@ describe Game do
         allow(game_play).to receive(:game_over?).and_return(false, true)
       end
 
-      xit 'calls play_round one time' do
+      it 'calls play_round one time' do
         expect(game_play).to receive(:play_round).once
         game_play.play_game
       end
@@ -33,7 +30,7 @@ describe Game do
         allow(game_play).to receive(:game_over?).and_return(false, false, false, false, false, false, false, false, true)
       end
 
-      xit 'calls play_round eight times time' do
+      it 'calls play_round eight times time' do
         expect(game_play).to receive(:play_round).exactly(8).times
         game_play.play_game
       end
@@ -44,46 +41,36 @@ describe Game do
     subject(:game_round) { described_class.new }
 
     before do
-      allow(game_round).to receive(:select_player)
+      allow(game_round).to receive(:switch_player)
       allow(game_round).to receive(:display_grid)
       allow(game_round).to receive(:get_input)
       allow(game_round).to receive(:update_board)
     end
 
-    xit 'sends select_player' do
-      expect(game_round).to receive(:select_player).once
+    it 'sends switch_player' do
+      expect(game_round).to receive(:switch_player).once
       game_round.play_round
     end
 
-    xit 'sends get_input' do
+    it 'sends get_input' do
       expect(game_round).to receive(:get_input).once
       game_round.get_input
     end
 
-    xit 'sends update_board' do
+    it 'sends update_board' do
       expect(game_round).to receive(:update_board).once
       game_round.update_board
     end
   end
 
-  describe '#select_player' do
+  describe '#switch_player' do
     subject(:game_select) { described_class.new }
-    let(:player_one) { instance_double(Player, name: 'Player 1', id: 1) }
-    let(:player_two) { instance_double(Player, name: 'Player 2', id: 2) }
 
     context 'when player 1 is current_player' do
-      xit 'changes current_player to player 2' do
-        current_player = instance_variable_get(:@current_player)
-        current_player = player_one
-        expect { game_select.select_player }.to change { current_player }.from(player_one).to(player_two)
-      end
-    end
-
-    context 'when player 2 is current_player' do
-      xit 'changes current_player to player 1' do
-        current_player = instance_variable_get(:@current_player)
-        current_player = player_two
-        expect { game_select.select_player }.to change { current_player }.from(player_two).to(player_one)
+      it 'changes current_player to player 2' do
+        player_one = game_select.instance_variable_get(:@player_one)
+        player_two = game_select.instance_variable_get(:@player_two)
+        expect { game_select.switch_player }.to change{ game_select.instance_variable_get(:@current_player) }.from(player_one).to(player_two)
       end
     end
   end
@@ -162,24 +149,33 @@ describe Game do
     subject(:game_columns) { described_class.new }
 
     context 'when one column is available' do
-      xit 'returns that column' do
+      before do
+        allow(game_columns).to receive(:convert_column_nums).and_return('A')
         token = '⚪'
-        board = game_update.instance_variable_get(:@board)
+        board = game_columns.instance_variable_get(:@board)
         7.times do |row|
           6.times do |column|
             board[row][column] = token
           end
         end
-        board[0][5] = nil
-        expect(game_columns).to receive(:get_available_columns).and_return('A')
+        board[5][0] = nil
+      end
+
+      it 'sends the number of that column to convert_column_nums' do
+        expect(game_columns).to receive(:convert_column_nums).with([0])
+        game_columns.get_available_columns
+      end
+
+      it 'returns that column' do
+        expect(game_columns).to receive(:get_available_columns).and_return([1])
         game_columns.get_available_columns
       end
     end
 
     context 'when no columns are available' do
-      xit 'returns nil' do
+      it 'returns nil' do
         token = '⚪'
-        board = game_update.instance_variable_get(:@board)
+        board = game_columns.instance_variable_get(:@board)
         7.times do |row|
           6.times do |column|
             board[row][column] = token
@@ -191,16 +187,16 @@ describe Game do
     end
 
     context 'when more than one column is available' do
-      xit 'returns the available columns' do
+      it 'returns the available columns' do
         token = '⚪'
-        board = game_update.instance_variable_get(:@board)
+        board = game_columns.instance_variable_get(:@board)
         7.times do |row|
           6.times do |column|
             board[row][column] = token
           end
         end
-        board[0][5] = nil
-        board[1][5] = nil
+        board[5][0] = nil
+        board[5][1] = nil
         expect(game_columns).to receive(:get_available_columns).and_return(%w[A B])
         game_columns.get_available_columns
       end
@@ -229,7 +225,7 @@ describe Game do
             let(:player_two) { instance_double('Player') }
           end
         end
-  
+
         xit 'updates the grid with Player 2\'s token' do
           board = game_update.instance_variable_get(:@board)
           token = '⚫'
