@@ -15,6 +15,7 @@ describe Game do
     context 'when game_over? is false once' do
       before do
         allow(game_play).to receive(:introduction)
+        allow(game_play).to receive(:display_board)
         allow(game_play).to receive(:display_game_end)
         allow(game_play).to receive(:game_over?).and_return(false, true)
       end
@@ -28,6 +29,7 @@ describe Game do
     context 'when game_over? is false eight times' do
       before do
         allow(game_play).to receive(:introduction)
+        allow(game_play).to receive(:display_board)
         allow(game_play).to receive(:display_game_end)
         allow(game_play).to receive(:game_over?).and_return(false, false, false, false, false, false, false, false, true)
       end
@@ -44,7 +46,7 @@ describe Game do
 
     before do
       allow(game_round).to receive(:switch_player)
-      allow(game_round).to receive(:display_grid)
+      allow(game_round).to receive(:display_board)
       allow(game_round).to receive(:get_input)
       allow(game_round).to receive(:update_board)
     end
@@ -105,7 +107,7 @@ describe Game do
       end
 
       it 'completes loop and displays error message once' do
-        error_message = 'Input error!'
+        error_message = "Sorry, 99\'s not an available column."
         expect(game_input).to receive(:puts).with(error_message).once
         game_input.get_input
       end
@@ -267,20 +269,33 @@ describe Game do
         4.times do |column|
           board[column][0] = token
         end
-        expect(game_horizontal).to receive(:check_horizontal_win).and_return(true)
-        game_horizontal.check_horizontal_win
+        horizontal_win = game_horizontal.check_horizontal_win
+        expect(horizontal_win).to be(true)
       end
     end
 
-    context 'when there is no horizontal win' do
+    context 'when there\'s only a match of 3' do
       it 'returns false' do
         board = game_horizontal.instance_variable_get(:@board)
         token = '⚪'
         3.times do |column|
           board[column][0] = token
         end
-        expect(game_horizontal).to receive(:check_horizontal_win).and_return(true)
-        game_horizontal.check_horizontal_win
+        horizontal_win = game_horizontal.check_horizontal_win
+        expect(horizontal_win).to be(false)
+      end
+    end
+
+    context 'when 4 spaces are taken but not consecutively' do
+      it 'returns false' do
+        board = game_horizontal.instance_variable_get(:@board)
+        token = '⚪'
+        3.times do |column|
+          board[column][0] = token
+        end
+        board[4][0] = token
+        horizontal_win = game_horizontal.check_horizontal_win
+        expect(horizontal_win).to be(false)
       end
     end
   end
@@ -295,20 +310,21 @@ describe Game do
         4.times do |row|
           board[5][row] = token
         end
-        expect(game_vertical).to receive(:check_vertical_win).and_return(true)
-        game_vertical.check_vertical_win
+        vertical_win = game_vertical.check_vertical_win
+        expect(vertical_win).to be(true)
       end
     end
 
-    context 'when there is no vertical win' do
+    context 'when only 3 consecutive spaces are taken' do
       it 'returns false' do
         board = game_vertical.instance_variable_get(:@board)
         token = '⚫'
         3.times do |row|
           board[6][row] = token
         end
-        expect(game_vertical).to receive(:check_vertical_win).and_return(false)
-        game_vertical.check_vertical_win
+        board[6][4] = token
+        vertical_win = game_vertical.check_vertical_win
+        expect(vertical_win).to be(false)
       end
     end
   end
@@ -329,13 +345,14 @@ describe Game do
       end
     end
 
-    context 'when there is no diagonal win' do
-      it 'returns false' do
+    context 'when only 3 consecutive spaces are taken' do
+        it 'returns false' do
         board = game_diagonal.instance_variable_get(:@board)
         token = '⚪'
-        board[0][2] = token
-        board[1][3] = token
-        board[2][4] = token
+        board[0][0] = token
+        board[1][1] = token
+        board[2][2] = token
+        board[4][4] = token
         diagonal_win = game_diagonal.check_diagonal_win
         expect(diagonal_win).to be(false)
       end
@@ -345,7 +362,7 @@ end
 
 # other methods:
 #  #introduction
-#  #display_grid
+#  #display_board
 #  #display_game_end
 #  #invite_input
     # puts msg to player with available columns

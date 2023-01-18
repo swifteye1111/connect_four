@@ -23,10 +23,12 @@ class Game
   def play_game
     introduction
     play_turn until game_over?
+    display_board
     display_game_end
   end
 
   def play_turn
+    display_board
     verified_input = get_input
     update_board(verified_input)
     switch_player
@@ -37,14 +39,13 @@ class Game
   end
 
   def get_input
-    invite_input
     loop do
-      user_input = gets.chomp
+      invite_input
+      user_input = gets.chomp.upcase
       verified_column = verify_input(user_input) if user_input.match?(/[A-G]/)
       return verified_column if verified_column
 
-      puts 'Input error!'
-      invite_input
+      puts "Sorry, #{user_input}\'s not an available column."
     end
   end
 
@@ -62,7 +63,7 @@ class Game
 
   def nums_to_names(column_nums)
     column_names = []
-    @columns_key.each_pair { |letter, num| column_names << letter if column_nums.include?(num) }
+    @columns_key.each_pair { |letter, num| column_names << letter.to_s if column_nums.include?(num) }
     column_names
   end
 
@@ -75,7 +76,7 @@ class Game
   def game_over?
     return true if get_available_columns.nil?
 
-    @winner = @current_player if check_horizontal_win || check_vertical_win || check_diagonal_win
+    @winner = switch_player if check_horizontal_win || check_vertical_win || check_diagonal_win
     return true unless @winner.nil?
     false
   end
@@ -83,20 +84,34 @@ class Game
   def check_horizontal_win
     board_transposed = @board.transpose
     6.times do |column|
-      p_one_count = board_transposed[column].count(@player_one.token)
-      p_two_count = board_transposed[column].count(@player_two.token)
-      greater_count = p_one_count > p_two_count ? p_one_count : p_two_count
-      return true if greater_count >= 4
+      sum = 0
+      board_transposed[column].each_with_index do |spot, row|
+        unless spot.nil?
+          if spot == board_transposed[column][row - 1] || row.zero?
+            sum += 1
+            return true if sum >= 4
+          else
+            sum = 0
+          end
+        end
+      end
     end
     false
   end
 
   def check_vertical_win
     7.times do |column|
-      p_one_count = @board[column].count(@player_one.token)
-      p_two_count = @board[column].count(@player_two.token)
-      greater_count = p_one_count > p_two_count ? p_one_count : p_two_count
-      return true if greater_count >= 4
+      sum = 0
+      @board[column].each_with_index do |spot, row|
+        unless spot.nil?
+          if spot == @board[column][row - 1] || row.zero?
+            sum += 1
+            return true if sum >= 4
+          else
+            sum = 0
+          end
+        end
+      end
     end
     false
   end
@@ -121,10 +136,17 @@ class Game
       diagonal.each do |board_space|
         diagonal_values << @board[board_space[0]][board_space[1]]
       end
-      p_one_count = diagonal_values.flatten.count(@player_one.token)
-      p_two_count = diagonal_values.flatten.count(@player_two.token)
-      greater_count = p_one_count > p_two_count ? p_one_count : p_two_count
-      return true if greater_count >= 4
+      sum = 0
+      diagonal_values.each_with_index do |value, index|
+        unless value.nil?
+          if value == diagonal_values[index - 1] || index.zero?
+            sum += 1
+            return true if sum >= 4
+          else
+            sum = 0
+          end
+        end
+      end
     end
     false
   end
@@ -145,14 +167,35 @@ class Game
   end
 
   def invite_input
-    puts "Please input a column from the available columns: #{get_available_columns}:"
+    puts "Please input a column from the available columns:\n#{get_available_columns.join(', ')}"
   end
 
-  def display_grid
-    puts @board
+  def display_board
+    display = "\n"
+    row = 5
+    while row >= 0
+      column = 0
+      while column <= 6
+        if @board[column][row].nil?
+          display += '｜   '
+        else
+          display += "｜#{@board[column][row]} "
+        end
+        column += 1
+      end
+      display += "｜\n"
+      row -= 1
+    end
+    display += "⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼⎼\n"
+    display += "｜ A ｜ B ｜ C ｜ D ｜ E ｜ F ｜ G ｜\n\n"
+    puts display
   end
 
   def display_game_end
-    puts "winner is #{@current_player}"
+    puts "#{@current_player.name} wins!"
   end
 end
+
+#####SOMETHING IS WRONG WITH GAME END.
+#If you have 4 in a row or column it declares a winner. Problem bc there are 7 columns.
+# #count isn't enough...have to make it consecutive..how to make it consecutive?
