@@ -2,12 +2,6 @@
 
 require_relative '../lib/game'
 
-# Game Notes:
-# 7 columns, 6 rows:
-#   x, y grid
-# Player 1, player 2 (player class)
-# Discs can only go in from top to bottom
-
 describe Game do
   describe '#play_game' do
     subject(:game_play) { described_class.new }
@@ -47,7 +41,7 @@ describe Game do
     before do
       allow(game_round).to receive(:switch_player)
       allow(game_round).to receive(:display_board)
-      allow(game_round).to receive(:get_input)
+      allow(game_round).to receive(:receive_input)
       allow(game_round).to receive(:update_board)
     end
 
@@ -56,9 +50,9 @@ describe Game do
       game_round.play_turn
     end
 
-    it 'sends get_input' do
-      expect(game_round).to receive(:get_input).once
-      game_round.get_input
+    it 'sends receive_input' do
+      expect(game_round).to receive(:receive_input).once
+      game_round.receive_input
     end
 
     it 'sends update_board' do
@@ -79,7 +73,7 @@ describe Game do
     end
   end
 
-  describe '#get_input' do
+  describe '#receive_input' do
     subject(:game_input) { described_class.new }
 
     context 'when user inputs a valid value' do
@@ -92,7 +86,7 @@ describe Game do
 
       it 'stops loop and does not display error message' do
         expect(game_input).not_to receive(:puts)
-        game_input.get_input
+        game_input.receive_input
       end
     end
 
@@ -109,7 +103,7 @@ describe Game do
       it 'completes loop and displays error message once' do
         error_message = "Sorry, 99\'s not an available column."
         expect(game_input).to receive(:puts).with(error_message).once
-        game_input.get_input
+        game_input.receive_input
       end
     end
   end
@@ -119,7 +113,7 @@ describe Game do
 
     context 'when given a valid input as argument' do
       it 'returns valid input' do
-        allow(game_verify).to receive(:get_available_columns).and_return(%w[B])
+        allow(game_verify).to receive(:check_available_columns).and_return(%w[B])
         user_input = 'B'
         verified_input = game_verify.verify_input(user_input)
         expect(verified_input).to eq('B')
@@ -128,7 +122,7 @@ describe Game do
 
     context 'when given invalid input as argument' do
       it 'returns nil' do
-        allow(game_verify).to receive(:get_available_columns).and_return(%w[A B C E])
+        allow(game_verify).to receive(:check_available_columns).and_return(%w[A B C E])
         user_input = 'F'
         verified_input = game_verify.verify_input(user_input)
         expect(verified_input).to be_nil
@@ -136,7 +130,7 @@ describe Game do
     end
   end
 
-  describe '#get_available_columns' do
+  describe '#check_available_columns' do
     subject(:game_columns) { described_class.new }
 
     context 'when one column is available' do
@@ -154,12 +148,12 @@ describe Game do
 
       it 'sends the number of that column to nums_to_names' do
         expect(game_columns).to receive(:nums_to_names).with([0])
-        game_columns.get_available_columns
+        game_columns.check_available_columns
       end
 
       it 'returns that column' do
-        expect(game_columns).to receive(:get_available_columns).and_return([1])
-        game_columns.get_available_columns
+        expect(game_columns).to receive(:check_available_columns).and_return([1])
+        game_columns.check_available_columns
       end
     end
 
@@ -172,8 +166,8 @@ describe Game do
             board[column][row] = token
           end
         end
-        expect(game_columns).to receive(:get_available_columns).and_return(nil)
-        game_columns.get_available_columns
+        expect(game_columns).to receive(:check_available_columns).and_return(nil)
+        game_columns.check_available_columns
       end
     end
 
@@ -188,8 +182,8 @@ describe Game do
         end
         board[0][5] = nil
         board[0][5] = nil
-        expect(game_columns).to receive(:get_available_columns).and_return(%w[A B])
-        game_columns.get_available_columns
+        expect(game_columns).to receive(:check_available_columns).and_return(%w[A B])
+        game_columns.check_available_columns
       end
     end
   end
@@ -227,12 +221,24 @@ describe Game do
     end
   end
 
+  describe '#nums_to_names' do
+    subject(:game_conversion) { described_class.new }
+
+    context 'when columns 0, 2, and 4 are given' do
+      it 'returns A, C, and E' do
+        nums = [0, 2, 4]
+        names = game_conversion.nums_to_names(nums)
+        expect(names).to eq(%w[A C E])
+      end
+    end
+  end
+
   describe '#game_over?' do
     subject(:game_end) { described_class.new }
 
     context 'when the game is over because spaces are full' do
       before do
-        allow(game_end).to receive(:get_available_columns).and_return(nil)
+        allow(game_end).to receive(:check_available_columns).and_return(nil)
         board = game_end.instance_variable_get(:@board)
         token = '⚪'
         board[0][0] = token
@@ -246,9 +252,8 @@ describe Game do
 
     context 'when the game is not over' do
       before do
-        allow(game_end).to receive(:get_available_columns).and_return('A')
-        allow(game_end).to receive(:check_horizontal_win).and_return(false)
-        allow(game_end).to receive(:check_vertical_win).and_return(false)
+        allow(game_end).to receive(:check_available_columns).and_return('A')
+        allow(game_end).to receive(:check_adjoining_win).and_return(false)
         allow(game_end).to receive(:check_diagonal_win).and_return(false)
       end
 
@@ -259,72 +264,58 @@ describe Game do
     end
   end
 
-  describe '#check_horizontal_win' do
-    subject(:game_horizontal) { described_class.new }
+  describe '#check_adjoining_win' do
+    subject(:game_adjoining) { described_class.new }
 
-    context 'when player wins horizontally' do
+    context 'when player takes 4 consecutive horizontal spaces' do
       it 'returns true' do
-        board = game_horizontal.instance_variable_get(:@board)
+        board = game_adjoining.instance_variable_get(:@board)
         token = '⚪'
-        4.times do |column|
-          board[column][0] = token
-        end
-        horizontal_win = game_horizontal.check_horizontal_win
-        expect(horizontal_win).to be(true)
+        4.times { |column| board[column][0] = token }
+        board = board.transpose
+        adjoining_win = game_adjoining.check_adjoining_win(board, 7)
+        expect(adjoining_win).to be true
       end
     end
 
-    context 'when there\'s only a match of 3' do
-      it 'returns false' do
-        board = game_horizontal.instance_variable_get(:@board)
+    context 'when player takes 4 consecutive vertical spaces' do
+      it 'returns true' do
+        board = game_adjoining.instance_variable_get(:@board)
         token = '⚪'
-        3.times do |column|
-          board[column][0] = token
-        end
-        horizontal_win = game_horizontal.check_horizontal_win
-        expect(horizontal_win).to be(false)
+        4.times { |row| board[0][row + 2] = token }
+        adjoining_win = game_adjoining.check_adjoining_win(board, 6)
+        expect(adjoining_win).to be true
       end
     end
 
-    context 'when 4 spaces are taken but not consecutively' do
+    context 'when player takes 3 consecutive vertical spaces' do
       it 'returns false' do
-        board = game_horizontal.instance_variable_get(:@board)
+        board = game_adjoining.instance_variable_get(:@board)
         token = '⚪'
-        3.times do |column|
-          board[column][0] = token
-        end
-        board[4][0] = token
-        horizontal_win = game_horizontal.check_horizontal_win
-        expect(horizontal_win).to be(false)
+        3.times { |row| board[0][row + 2] = token }
+        board[0][4] = token
+        adjoining_win = game_adjoining.check_adjoining_win(board, 6)
+        expect(adjoining_win).not_to be true
       end
     end
   end
 
-  describe '#check_vertical_win' do
-    subject(:game_vertical) { described_class.new }
+  describe '#consecutive_four?' do
+    subject(:game_consecutive) { described_class.new }
 
-    context 'when player wins vertically' do
+    context 'when given the first in a set of 4 consecutive tokens' do
       it 'returns true' do
-        board = game_vertical.instance_variable_get(:@board)
-        token = '⚫'
-        4.times do |row|
-          board[5][row] = token
-        end
-        vertical_win = game_vertical.check_vertical_win
-        expect(vertical_win).to be(true)
+        column = [nil, nil, '⚪', '⚪', '⚪', '⚪']
+        consecutive = game_consecutive.consecutive_four?(column, 2)
+        expect(consecutive).to be true
       end
     end
 
-    context 'when only 3 consecutive spaces are taken' do
+    context 'when given the first in a set of 3 tokens' do
       it 'returns false' do
-        board = game_vertical.instance_variable_get(:@board)
-        token = '⚫'
-        3.times do |row|
-          board[6][row] = token
-        end
-        board[6][4] = token
-        vertical_win = game_vertical.check_vertical_win
-        expect(vertical_win).to be(false)
+        column = [nil, nil, '⚪', '⚪', '⚪', nil]
+        consecutive = game_consecutive.consecutive_four?(column, 2)
+        expect(consecutive).not_to be true
       end
     end
   end
@@ -332,7 +323,7 @@ describe Game do
   describe '#check_diagonal_win' do
     subject(:game_diagonal) { described_class.new }
 
-    context 'when a player wins diagonally' do
+    context 'when a player wins diagonally (lower left to upper right)' do
       it 'returns true' do
         board = game_diagonal.instance_variable_get(:@board)
         token = '⚪'
@@ -341,7 +332,7 @@ describe Game do
         board[2][3] = token
         board[3][4] = token
         diagonal_win = game_diagonal.check_diagonal_win
-        expect(diagonal_win).to be(true)
+        expect(diagonal_win).to be true
       end
     end
 
@@ -354,15 +345,21 @@ describe Game do
         board[2][2] = token
         board[4][4] = token
         diagonal_win = game_diagonal.check_diagonal_win
-        expect(diagonal_win).to be(false)
+        expect(diagonal_win).not_to be true
+      end
+    end
+
+    context 'when a player wins diagonally (upper left to lower right)' do
+      it 'returns true' do
+        board = game_diagonal.instance_variable_get(:@board)
+        token = '⚪'
+        board[0][4] = token
+        board[1][3] = token
+        board[2][2] = token
+        board[3][1] = token
+        diagonal_win = game_diagonal.check_diagonal_win
+        expect(diagonal_win).to be true
       end
     end
   end
 end
-
-# other methods:
-#  #introduction
-#  #display_board
-#  #display_game_end
-#  #invite_input
-    # puts msg to player with available columns

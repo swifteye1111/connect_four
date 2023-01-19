@@ -2,6 +2,7 @@
 
 require_relative 'player'
 
+# Connect Four Class - game in terminal between two players
 class Game
   attr_reader :player_one, :player_two
 
@@ -28,7 +29,7 @@ class Game
   end
 
   def play_turn
-    verified_input = get_input
+    verified_input = receive_input
     update_board(verified_input)
     display_board
     switch_player
@@ -38,7 +39,7 @@ class Game
     @current_player = @current_player == player_one ? player_two : player_one
   end
 
-  def get_input
+  def receive_input
     loop do
       invite_input
       user_input = gets.chomp.upcase
@@ -50,10 +51,10 @@ class Game
   end
 
   def verify_input(input)
-    return input if get_available_columns.include?(input)
+    return input if check_available_columns.include?(input)
   end
 
-  def get_available_columns
+  def check_available_columns
     available_columns = []
     row = 5
     7.times { |column| available_columns << column if @board[column][row].nil? }
@@ -68,23 +69,19 @@ class Game
   end
 
   def game_over?
-    return true if get_available_columns.nil?
+    return true if check_available_columns.nil?
 
-    @winner = switch_player if check_horizontal_win || check_vertical_win || check_diagonal_win
+    horizontal = check_adjoining_win(@board.transpose, 6)
+    vertical = check_adjoining_win(@board, 7)
+    diagonal = check_diagonal_win
+
+    @winner = switch_player if horizontal || vertical || diagonal
     return true unless @winner.nil?
 
     false
   end
 
-  def check_horizontal_win
-    check_for_four(@board.transpose, 6)
-  end
-
-  def check_vertical_win
-    check_for_four(@board, 7)
-  end
-
-  def check_for_four(board, num_columns)
+  def check_adjoining_win(board, num_columns)
     num_columns.times do |column|
       board[column].each_with_index do |spot, row|
         next if spot.nil?
@@ -110,19 +107,25 @@ class Game
   def check_diagonal_win
     diagonals = generate_diagonals
     diagonal_values = generate_diagonal_values(diagonals)
+    
+    diagonal_values.each do |diagonal|
+      diagonal.each_with_index do |value, index|
+        next if value.nil?
 
-    diagonal_values.each_with_index do |value, index|
-      next if value.nil?
-
-      return true if consecutive_four?(diagonal_values, index)
+        return true if consecutive_four?(diagonal, index)
+      end
     end
     false
   end
 
   def generate_diagonals
+    generate_ascending_diagonals + generate_descending_diagonals
+  end
+
+  def generate_ascending_diagonals
     lower_left_ends = [[0, 2], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0]]
     upper_right_ends = [[3, 5], [4, 5], [5, 5], [6, 5], [6, 4], [6, 3]]
-    diagonals = []
+    ascending_diagonals = []
     lower_left_ends.each_with_index do |elm, idx|
       diagonal = [elm]
       x = elm[0]
@@ -132,17 +135,38 @@ class Game
         y += 1
         diagonal << [x, y]
       end
-      diagonals << diagonal
+      ascending_diagonals << diagonal
     end
-    diagonals
+    ascending_diagonals
+  end
+
+  def generate_descending_diagonals
+    upper_left_ends = [[0, 3], [0, 4], [0, 5], [1, 5], [2, 5], [3, 5]]
+    lower_right_ends = [[3, 0], [4, 0], [5, 0], [6, 0], [6, 1], [6, 2]]
+    descending_diagonals = []
+    upper_left_ends.each_with_index do |elm, idx|
+      diagonal = [elm]
+      x = elm[0]
+      y = elm[1]
+      until lower_right_ends[idx] == [x, y]
+        x += 1
+        y -= 1
+        diagonal << [x, y]
+      end
+      descending_diagonals << diagonal
+    end
+    descending_diagonals
   end
 
   def generate_diagonal_values(diagonals)
     diagonal_values = []
+    values = []
     diagonals.each do |diagonal|
       diagonal.each do |board_space|
-        diagonal_values << @board[board_space[0]][board_space[1]]
+        values << @board[board_space[0]][board_space[1]]
       end
+      diagonal_values << values
+      values = []
     end
     diagonal_values
   end
@@ -157,7 +181,7 @@ class Game
   private
 
   def introduction
-    puts 'Welcome to Connect Four! Drop tokens into the grid from the top and try to connect four before your opponent! You win by getting 4 adjacent tokens - horizontally, vertically, or diagonally.
+    puts 'Welcome to Connect Four! Drop tokens into the grid from the top and try to connect four before your opponent! You win by getting 4 consecutive tokens - horizontally, vertically, or diagonally.
       Player 1\'s token: ⚪
       Player 2\'s token: ⚫.'
   end
@@ -188,10 +212,6 @@ class Game
   end
 
   def display_game_end
-    puts "#{@current_player.name} wins!"
+    puts "🎆🎆 #{@current_player.name} wins! 🎆🎆"
   end
 end
-
-#####SOMETHING IS WRONG WITH GAME END.
-#If you have 4 in a row or column it declares a winner. Problem bc there are 7 columns.
-# #count isn't enough...have to make it consecutive..how to make it consecutive?
