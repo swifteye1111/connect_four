@@ -22,15 +22,15 @@ class Game
 
   def play_game
     introduction
-    play_turn until game_over?
     display_board
+    play_turn until game_over?
     display_game_end
   end
 
   def play_turn
-    display_board
     verified_input = get_input
     update_board(verified_input)
+    display_board
     switch_player
   end
 
@@ -67,56 +67,59 @@ class Game
     column_names
   end
 
-  def names_to_nums(column_names)
-    column_nums = []
-    @columns_key.each_pair { |letter, num| column_nums << num if column_names.include?(letter) }
-    column_nums
-  end
-
   def game_over?
     return true if get_available_columns.nil?
 
     @winner = switch_player if check_horizontal_win || check_vertical_win || check_diagonal_win
     return true unless @winner.nil?
+
     false
   end
 
   def check_horizontal_win
-    board_transposed = @board.transpose
-    6.times do |column|
-      sum = 0
-      board_transposed[column].each_with_index do |spot, row|
-        unless spot.nil?
-          if spot == board_transposed[column][row - 1] || row.zero?
-            sum += 1
-            return true if sum >= 4
-          else
-            sum = 0
-          end
-        end
-      end
-    end
-    false
+    check_for_four(@board.transpose, 6)
   end
 
   def check_vertical_win
-    7.times do |column|
-      sum = 0
-      @board[column].each_with_index do |spot, row|
-        unless spot.nil?
-          if spot == @board[column][row - 1] || row.zero?
-            sum += 1
-            return true if sum >= 4
-          else
-            sum = 0
-          end
-        end
+    check_for_four(@board, 7)
+  end
+
+  def check_for_four(board, num_columns)
+    num_columns.times do |column|
+      board[column].each_with_index do |spot, row|
+        next if spot.nil?
+
+        return true if consecutive_four?(board[column], row)
       end
     end
     false
   end
 
+  def consecutive_four?(column, row_num)
+    sum = 0
+    4.times do |i|
+      sum += 1
+      next if column[row_num] == column[row_num + i]
+
+      sum = 0
+      false
+    end
+    return true if sum == 4
+  end
+
   def check_diagonal_win
+    diagonals = generate_diagonals
+    diagonal_values = generate_diagonal_values(diagonals)
+
+    diagonal_values.each_with_index do |value, index|
+      next if value.nil?
+
+      return true if consecutive_four?(diagonal_values, index)
+    end
+    false
+  end
+
+  def generate_diagonals
     lower_left_ends = [[0, 2], [0, 1], [0, 0], [1, 0], [2, 0], [3, 0]]
     upper_right_ends = [[3, 5], [4, 5], [5, 5], [6, 5], [6, 4], [6, 3]]
     diagonals = []
@@ -124,31 +127,24 @@ class Game
       diagonal = [elm]
       x = elm[0]
       y = elm[1]
-      until [x, y] == upper_right_ends[idx] do
+      until upper_right_ends[idx] == [x, y]
         x += 1
         y += 1
         diagonal << [x, y]
       end
       diagonals << diagonal
     end
+    diagonals
+  end
+
+  def generate_diagonal_values(diagonals)
+    diagonal_values = []
     diagonals.each do |diagonal|
-      diagonal_values = []
       diagonal.each do |board_space|
         diagonal_values << @board[board_space[0]][board_space[1]]
       end
-      sum = 0
-      diagonal_values.each_with_index do |value, index|
-        unless value.nil?
-          if value == diagonal_values[index - 1] || index.zero?
-            sum += 1
-            return true if sum >= 4
-          else
-            sum = 0
-          end
-        end
-      end
     end
-    false
+    diagonal_values
   end
 
   def update_board(column)
@@ -167,7 +163,7 @@ class Game
   end
 
   def invite_input
-    puts "Please input a column from the available columns:\n#{get_available_columns.join(', ')}"
+    puts 'Please input a column from the available columns (A-G).'
   end
 
   def display_board
