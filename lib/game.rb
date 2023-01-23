@@ -31,6 +31,7 @@ class Game
   def play_turn
     verified_input = receive_input
     update_board(verified_input)
+    system("clear")
     display_board
     switch_player
   end
