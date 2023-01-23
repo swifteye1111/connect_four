@@ -22,7 +22,9 @@ class Game
   end
 
   def play_game
+    system("clear")
     introduction
+    sleep 2
     display_board
     play_turn until game_over?
     display_game_end
